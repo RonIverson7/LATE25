@@ -241,37 +241,6 @@ const ViewEventsScreen = () => {
     }
   };
 
-  const pad = (n) => String(n).padStart(2, '0');
-  const toICSDate = (dt) => {
-    const d = new Date(dt);
-    return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`;
-  };
-  const esc = (s) => String(s || '').replace(/,/g, '\\,').replace(/;/g, '\\;').replace(/\n/g, '\\n');
-  const buildICS = (e) => [
-    'BEGIN:VCALENDAR',
-    'VERSION:2.0',
-    'PRODID:-//Museo//Event//EN',
-    'CALSCALE:GREGORIAN',
-    'METHOD:PUBLISH',
-    'BEGIN:VEVENT',
-    `UID:${Date.now()}@museo.app`,
-    `DTSTAMP:${toICSDate(new Date())}`,
-    `DTSTART:${toICSDate(e.startsAt || e.start)}`,
-    `DTEND:${toICSDate(e.endsAt || e.end || e.startsAt || e.start)}`,
-    `SUMMARY:${esc(e.title)}`,
-    `LOCATION:${esc(`${e.venueName || ''} ${e.venueAddress || ''}`.trim())}`,
-    'END:VEVENT',
-    'END:VCALENDAR',
-  ].join('\r\n');
-
-  const addToCalendar = async () => {
-    try {
-      if (!event) return;
-      if (isEventPast) return; // do not allow adding ended events
-      const ics = buildICS(event);
-      await Share.share({ message: ics, title: `${event.title || 'event'}.ics` });
-    } catch (e) {}
-  };
 
   const joinEvent = async () => {
     try {
@@ -422,14 +391,6 @@ const ViewEventsScreen = () => {
             >
               <Text style={styles.joinButtonText}>{isEventPast ? 'Event Ended' : (isSubmitting ? (joined ? 'Cancelling…' : 'Joining…') : (joined ? 'Cancel' : 'Join Event'))}</Text>
             </TouchableOpacity>
-            {!isEventPast && (
-              <TouchableOpacity
-                style={[styles.button, styles.secondaryButton]}
-                onPress={addToCalendar}
-              >
-                <Text style={styles.secondaryButtonText}>Add to Calendar</Text>
-              </TouchableOpacity>
-            )}
           </View>
 
           {/* Details + Info Grid */}

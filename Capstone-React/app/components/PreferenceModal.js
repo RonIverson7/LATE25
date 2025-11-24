@@ -20,6 +20,11 @@ const PREFERENCE_SLUG_MAP = {
   conceptual: 'conceptual',
 };
 
+const SLUG_TO_FRONTEND_KEY = Object.entries(PREFERENCE_SLUG_MAP).reduce((acc, [front, back]) => {
+  acc[back] = front;
+  return acc;
+}, {});
+
 export default function PreferenceModal({
   interestsModalVisible,
   setInterestsModalVisible,
@@ -31,6 +36,77 @@ export default function PreferenceModal({
   API_BASE,
   styles,
 }) {
+  const [categories, setCategories] = React.useState([]);
+
+  React.useEffect(() => {
+    let abort = false;
+    const loadCategories = async () => {
+      try {
+        if (!API_BASE || !accessToken || !refreshToken) return;
+
+        const query = new URLSearchParams();
+        query.append('page', '1');
+        query.append('limit', '200');
+        query.append('nocache', '1');
+
+        const res = await fetch(`${API_BASE}/gallery/categories?${query.toString()}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cookie': `access_token=${accessToken}; refresh_token=${refreshToken}`,
+          },
+          credentials: 'include',
+        });
+
+        if (!res.ok) return;
+
+        const catData = await res.json();
+        const catList = Array.isArray(catData?.categories) ? catData.categories : [];
+        if (abort) return;
+
+        const palette = [
+          '#111',
+          '#6b21a8',
+          '#b45309',
+          '#047857',
+          '#1f2937',
+          '#0ea5e9',
+          '#7c3aed',
+          '#f59e0b',
+          '#4b5563',
+          '#ef4444',
+          '#10b981',
+          '#60a5fa',
+          '#f59e0b',
+          '#ef4444',
+          '#10b981',
+          '#0ea5e9',
+        ];
+
+        const mapped = catList.map((c, index) => {
+          const backendSlug = c.slug || '';
+          const frontId = SLUG_TO_FRONTEND_KEY[backendSlug] || backendSlug || (c.name || String(index));
+          const color = palette[index % palette.length];
+          return {
+            id: frontId,
+            name: c.name || backendSlug || 'Category',
+            color,
+          };
+        });
+
+        setCategories(mapped);
+      } catch (e) {
+        console.log('PreferenceModal loadCategories error:', e?.message || e);
+      }
+    };
+
+    loadCategories();
+
+    return () => {
+      abort = true;
+    };
+  }, [API_BASE, accessToken, refreshToken]);
+
   return (
     <Modal visible={interestsModalVisible} animationType="fade" transparent>
       <TouchableWithoutFeedback>
@@ -42,24 +118,7 @@ export default function PreferenceModal({
             </Text>
             <ScrollView style={{ maxHeight: 400 }} showsVerticalScrollIndicator={false}>
               <View style={styles.interestsGrid}>
-                {[
-                  { id: 'classical', name: 'Classical Art', color: '#111' },
-                  { id: 'contemporary', name: 'Contemporary', color: '#6b21a8' },
-                  { id: 'impressionist', name: 'Impressionist', color: '#b45309' },
-                  { id: 'abstract', name: 'Abstract', color: '#047857' },
-                  { id: 'sculpture', name: 'Sculpture', color: '#1f2937' },
-                  { id: 'photography', name: 'Photography', color: '#0ea5e9' },
-                  { id: 'digital', name: 'Digital Art', color: '#7c3aed' },
-                  { id: 'street', name: 'Street Art', color: '#f59e0b' },
-                  { id: 'minimalist', name: 'Minimalist', color: '#4b5563' },
-                  { id: 'surrealist', name: 'Surrealist', color: '#ef4444' },
-                  { id: 'landscape', name: 'Landscape', color: '#10b981' },
-                  { id: 'portrait', name: 'Portrait', color: '#60a5fa' },
-                  { id: 'miniature', name: 'Miniature', color: '#f59e0b' },
-                  { id: 'expressionist', name: 'Expressionist', color: '#ef4444' },
-                  { id: 'realism', name: 'Realism', color: '#10b981' },
-                  { id: 'conceptual', name: 'Conceptual', color: '#0ea5e9' },
-                ].map((cat) => {
+                {categories.map((cat) => {
                   const selected = selectedInterests.includes(cat.id);
                   return (
                     <TouchableOpacity
